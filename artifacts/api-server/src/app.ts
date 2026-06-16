@@ -48,6 +48,10 @@ app.use(
   }),
 );
 
+app.get("/", (_req, res) => {
+  res.send("AuraBaseBD Server Running");
+});
+
 app.use("/api", router);
 
 export default app;
