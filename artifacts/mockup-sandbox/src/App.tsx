@@ -1,146 +1,124 @@
-import { useEffect, useState, type ComponentType } from "react";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Login from "./pages/Login";
+import Layout from "./components/Layout";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminProducts from "./pages/admin/Products";
+import AdminOrders from "./pages/admin/Orders";
+import AdminUsers from "./pages/admin/Users";
+import AdminPayments from "./pages/admin/Payments";
+import ResellerDashboard from "./pages/reseller/Dashboard";
+import ResellerOrders from "./pages/reseller/Orders";
+import CustomerStorefront from "./pages/customer/Storefront";
+import CustomerOrders from "./pages/customer/Orders";
+import { useState } from "react";
 
-import { modules as discoveredModules } from "./.generated/mockup-components";
+const ADMIN_NAV = [
+  { id: "dashboard", label: "Dashboard", icon: "📊" },
+  { id: "products", label: "Products", icon: "📦" },
+  { id: "orders", label: "Orders", icon: "🛒" },
+  { id: "users", label: "Users", icon: "👥" },
+  { id: "payments", label: "Payments", icon: "💳" },
+];
 
-type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
+const RESELLER_NAV = [
+  { id: "dashboard", label: "Dashboard", icon: "📊" },
+  { id: "orders", label: "My Orders", icon: "🛒" },
+];
 
-function _resolveComponent(
-  mod: Record<string, unknown>,
-  name: string,
-): ComponentType | undefined {
-  const fns = Object.values(mod).filter(
-    (v) => typeof v === "function",
-  ) as ComponentType[];
+const CUSTOMER_NAV = [
+  { id: "shop", label: "Shop", icon: "🛍️" },
+  { id: "orders", label: "My Orders", icon: "📋" },
+];
+
+function PageTitle(page: string, role: string): string {
+  const titles: Record<string, string> = {
+    dashboard: "Dashboard",
+    products: "Product Management",
+    orders: role === "customer" ? "My Orders" : "Orders",
+    users: "User Management",
+    payments: "Payment Management",
+    shop: "Shop",
+  };
+  return titles[page] ?? page;
+}
+
+function AdminApp() {
+  const [page, setPage] = useState("dashboard");
   return (
-    (mod.default as ComponentType) ||
-    (mod.Preview as ComponentType) ||
-    (mod[name] as ComponentType) ||
-    fns[fns.length - 1]
+    <Layout
+      page={page}
+      setPage={setPage}
+      navItems={ADMIN_NAV}
+      title={PageTitle(page, "admin")}
+      subtitle="Admin Panel"
+    >
+      {page === "dashboard" && <AdminDashboard />}
+      {page === "products" && <AdminProducts />}
+      {page === "orders" && <AdminOrders />}
+      {page === "users" && <AdminUsers />}
+      {page === "payments" && <AdminPayments />}
+    </Layout>
   );
 }
 
-function PreviewRenderer({
-  componentPath,
-  modules,
-}: {
-  componentPath: string;
-  modules: ModuleMap;
-}) {
-  const [Component, setComponent] = useState<ComponentType | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    setComponent(null);
-    setError(null);
-
-    async function loadComponent(): Promise<void> {
-      const key = `./components/mockups/${componentPath}.tsx`;
-      const loader = modules[key];
-      if (!loader) {
-        setError(`No component found at ${componentPath}.tsx`);
-        return;
-      }
-
-      try {
-        const mod = await loader();
-        if (cancelled) {
-          return;
-        }
-        const name = componentPath.split("/").pop()!;
-        const comp = _resolveComponent(mod, name);
-        if (!comp) {
-          setError(
-            `No exported React component found in ${componentPath}.tsx\n\nMake sure the file has at least one exported function component.`,
-          );
-          return;
-        }
-        setComponent(() => comp);
-      } catch (e) {
-        if (cancelled) {
-          return;
-        }
-
-        const message = e instanceof Error ? e.message : String(e);
-        setError(`Failed to load preview.\n${message}`);
-      }
-    }
-
-    void loadComponent();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [componentPath, modules]);
-
-  if (error) {
-    return (
-      <pre style={{ color: "red", padding: "2rem", fontFamily: "system-ui" }}>
-        {error}
-      </pre>
-    );
-  }
-
-  if (!Component) return null;
-
-  return <Component />;
-}
-
-function getBasePath(): string {
-  return import.meta.env.BASE_URL.replace(/\/$/, "");
-}
-
-function getPreviewExamplePath(): string {
-  const basePath = getBasePath();
-  return `${basePath}/preview/ComponentName`;
-}
-
-function Gallery() {
+function ResellerApp() {
+  const [page, setPage] = useState("dashboard");
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
-      <div className="text-center max-w-md">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-3">
-          Component Preview Server
-        </h1>
-        <p className="text-gray-500 mb-4">
-          This server renders individual components for the workspace canvas.
-        </p>
-        <p className="text-sm text-gray-400">
-          Access component previews at{" "}
-          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-            {getPreviewExamplePath()}
-          </code>
-        </p>
+    <Layout
+      page={page}
+      setPage={setPage}
+      navItems={RESELLER_NAV}
+      title={PageTitle(page, "reseller")}
+      subtitle="Reseller Panel"
+    >
+      {page === "dashboard" && <ResellerDashboard />}
+      {page === "orders" && <ResellerOrders />}
+    </Layout>
+  );
+}
+
+function CustomerApp() {
+  const [page, setPage] = useState("shop");
+  return (
+    <Layout
+      page={page}
+      setPage={setPage}
+      navItems={CUSTOMER_NAV}
+      title={PageTitle(page, "customer")}
+      subtitle="Customer Store"
+    >
+      {page === "shop" && <CustomerStorefront />}
+      {page === "orders" && <CustomerOrders />}
+    </Layout>
+  );
+}
+
+function AppRouter() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-xl font-bold text-white">A</span>
+          </div>
+          <p className="text-purple-300 text-sm">Loading AuraBaseBD...</p>
+        </div>
       </div>
-    </div>
-  );
-}
-
-function getPreviewPath(): string | null {
-  const basePath = getBasePath();
-  const { pathname } = window.location;
-  const local =
-    basePath && pathname.startsWith(basePath)
-      ? pathname.slice(basePath.length) || "/"
-      : pathname;
-  const match = local.match(/^\/preview\/(.+)$/);
-  return match ? match[1] : null;
-}
-
-function App() {
-  const previewPath = getPreviewPath();
-
-  if (previewPath) {
-    return (
-      <PreviewRenderer
-        componentPath={previewPath}
-        modules={discoveredModules}
-      />
     );
   }
 
-  return <Gallery />;
+  if (!user) return <Login />;
+  if (user.role === "admin") return <AdminApp />;
+  if (user.role === "reseller") return <ResellerApp />;
+  return <CustomerApp />;
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppRouter />
+    </AuthProvider>
+  );
+}

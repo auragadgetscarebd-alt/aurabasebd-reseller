@@ -1,0 +1,1 @@
+- [AuraBaseBD platform](aurabasebd.md) — full-stack SaaS reseller platform; mockup-sandbox repurposed as main frontend; admin auto-seeded on startup.
